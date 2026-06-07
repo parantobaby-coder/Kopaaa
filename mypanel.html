@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TASKS CRAFT - ADMIN PANEL</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase Compat SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+  <style>
+    body {
+      background-color: #f8fafc;
+      color: #1e293b;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .premium-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 1.25rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+    .admin-gradient-header {
+      background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    }
+  </style>
+</head>
+<body class="pb-10">
+
+  <div id="admin-app-view">
+    <header class="admin-gradient-header p-5 rounded-b-[2rem] shadow-lg flex justify-between items-center text-white">
+      <div>
+        <h1 class="font-extrabold text-base tracking-wide flex items-center">
+          🛡️ এডমিন ড্যাশবোর্ড (No Login)
+        </h1>
+        <p class="text-[10px] text-red-200 mt-1 uppercase">TASKS CRAFT CONTROL PANEL</p>
+      </div>
+      <span class="bg-white/10 px-3.5 py-1.5 rounded-xl border border-white/20 text-xs font-bold font-mono">
+        ONLINE CONTROL ACTIVE
+      </span>
+    </header>
+
+    <div class="p-4 space-y-6">
+      <!-- লাইভ কাউন্ট স্ট্যাটস -->
+      <div class="grid grid-cols-3 gap-3">
+        <div class="premium-card p-3.5 text-center bg-white border-t-4 border-t-blue-600">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Total Users</p>
+          <h3 id="adm-count-users" class="text-base font-extrabold text-slate-800 mt-1">০</h3>
+        </div>
+        <div class="premium-card p-3.5 text-center bg-white border-t-4 border-t-red-600">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Pending WD</p>
+          <h3 id="adm-count-withdraws" class="text-base font-extrabold text-red-600 mt-1">০</h3>
+        </div>
+        <div class="premium-card p-3.5 text-center bg-white border-t-4 border-t-emerald-600">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Pending Jobs</p>
+          <h3 id="adm-count-submissions" class="text-base font-extrabold text-emerald-600 mt-1">০</h3>
+        </div>
+      </div>
+
+      <!-- এডমিন সাব-মেনুবার বাটনসমূহ -->
+      <div class="grid grid-cols-5 gap-1.5 bg-white p-1 rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <button onclick="switchAdminSubSection('users')" id="adm-nav-users" class="text-[10px] font-bold py-2 rounded-xl text-center transition bg-red-600 text-white">User list</button>
+        <button onclick="switchAdminSubSection('withdraw')" id="adm-nav-withdraw" class="text-[10px] font-bold py-2 rounded-xl text-center transition text-slate-500 hover:bg-slate-100">Withdraw</button>
+        <button onclick="switchAdminSubSection('submissions')" id="adm-nav-submissions" class="text-[10px] font-bold py-2 rounded-xl text-center transition text-slate-500 hover:bg-slate-100">Job সাবমিট</button>
+        <button onclick="switchAdminSubSection('createjob')" id="adm-nav-createjob" class="text-[10px] font-bold py-2 rounded-xl text-center transition text-slate-500 hover:bg-slate-100">জব তৈরি</button>
+        <button onclick="switchAdminSubSection('settings')" id="adm-nav-settings" class="text-[10px] font-bold py-2 rounded-xl text-center transition text-slate-500 hover:bg-slate-100">এপ সেটিং</button>
+      </div>
+
+      <!-- ==================== SUBSECTION: USER LIST ==================== -->
+      <section id="adm-sec-users" class="adm-section space-y-4">
+        <div class="premium-card p-4">
+          <div class="relative">
+            <input type="text" id="adm-user-search" oninput="filterAdminUserList()" placeholder="ইউজারের নাম অথবা চ্যাট আইডি দিয়ে সার্চ করুন..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 pl-10 text-xs text-slate-800 focus:outline-none">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+        </div>
+        <div id="adm-user-list-container" class="space-y-3">
+          <!-- ডাইনামিকালি লোড হবে -->
+        </div>
+      </section>
+
+      <!-- ==================== SUBSECTION: WITHDRAWALS ==================== -->
+      <section id="adm-sec-withdraw" class="adm-section hidden space-y-4">
+        <div id="adm-withdraw-list-container" class="space-y-3">
+          <!-- পেন্ডিং উইথড্র আসবে -->
+        </div>
+      </section>
+
+      <!-- ==================== SUBSECTION: JOB SUBMISSIONS ==================== -->
+      <section id="adm-sec-submissions" class="adm-section hidden space-y-4">
+        <div id="adm-submissions-list-container" class="space-y-3">
+          <!-- সাবমিট করা কাজ আসবে -->
+        </div>
+      </section>
+
+      <!-- ==================== SUBSECTION: CREATE & MANAGE JOB ==================== -->
+      <section id="adm-sec-createjob" class="adm-section hidden space-y-4">
+        <div class="premium-card p-5 border border-slate-200">
+          <h3 id="adm-job-form-title" class="font-extrabold text-slate-800 text-sm mb-4">🆕 নতুন কাজ তৈরি করুন</h3>
+          <input type="hidden" id="adm-job-edit-id">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">কাজের নাম (Job Title):</label>
+          <input type="text" id="adm-job-title" placeholder="যেমন: চ্যানেল সাবস্ক্রাইব করুন" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">কাজের বিবরণ (Job Details):</label>
+          <textarea id="adm-job-details" rows="3" placeholder="ধাপ ১: লিংকে যান, ধাপ ২: সাবস্ক্রাইব করুন..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none"></textarea>
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">কাজের লিংক (Job Link):</label>
+          <input type="text" id="adm-job-link" placeholder="https://youtube.com/..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">ব্যানার ইমেজ লিংক (ঐচ্ছিক):</label>
+          <input type="text" id="adm-job-banner" placeholder="https://i.ibb.co/..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">পুরস্কারের পরিমাণ (৳):</label>
+          <input type="number" id="adm-job-amount" placeholder="2.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-5 focus:outline-none">
+
+          <div class="flex space-x-2">
+            <button onclick="handleSaveJob()" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl text-xs hover:bg-red-700 transition">সংরক্ষণ করুন</button>
+            <button id="adm-job-cancel-btn" onclick="resetJobForm()" class="hidden bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-xl text-xs hover:bg-slate-300 transition">বাতিল</button>
+          </div>
+        </div>
+
+        <h4 class="font-extrabold text-sm text-slate-800">📋 বর্তমান কাজের তালিকা</h4>
+        <div id="adm-current-jobs-list" class="space-y-3">
+          <!-- তৈরি করা কাজগুলো লোড হবে -->
+        </div>
+      </section>
+
+      <!-- ==================== SUBSECTION: APP SETTINGS ==================== -->
+      <section id="adm-sec-settings" class="adm-section hidden space-y-4">
+        <div class="premium-card p-5 border border-slate-200">
+          <h3 class="font-extrabold text-slate-800 text-sm mb-4">⚙️ গ্লোবাল অ্যাপ সেটিংস</h3>
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">প্রতিটি সফল রেফারে বোনাস (৳):</label>
+          <input type="number" id="adm-set-ref" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">মিনিমাম উইথড্র লিমিট (৳):</label>
+          <input type="number" id="adm-set-minwd" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">উইথড্র করার জন্য আবশ্যক মিনিমাম রেফার:</label>
+          <input type="number" id="adm-set-minref" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">প্রতিটি বিজ্ঞাপন দেখার জন্য পুরস্কার (Ad Reward ৳):</label>
+          <input type="number" step="0.01" id="adm-set-adreward" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">অফিশিয়াল টেলিগ্রাম গ্রুপ লিংক:</label>
+          <input type="text" id="adm-set-telegramgroup" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none font-mono">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">পপআপ অ্যানাউন্সমেন্ট ব্যানার ইমেজ লিংক:</label>
+          <input type="text" id="adm-set-popupbanner" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none font-mono">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">পপআপ অ্যানাউন্সমেন্ট বিস্তারিত লেখা:</label>
+          <textarea id="adm-set-popuptext" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none"></textarea>
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">টেলিগ্রাম নোটিফিকেশন বট টোকেন (Bot Token):</label>
+          <input type="text" id="adm-set-bottoken" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none font-mono">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">ব্যানার ১ লিংক (হোম স্লাইডার):</label>
+          <input type="text" id="adm-set-b1" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none font-mono">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">ব্যানার ২ লিংক (হোম স্লাইডার):</label>
+          <input type="text" id="adm-set-b2" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-3.5 focus:outline-none font-mono">
+
+          <label class="block text-xs font-semibold text-slate-500 mb-1">ব্যানার ৩ লিংক (হোম স্লাইডার):</label>
+          <input type="text" id="adm-set-b3" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 mb-5 focus:outline-none font-mono">
+
+          <button onclick="handleSaveSettings()" class="w-full bg-red-600 text-white font-extrabold py-3.5 rounded-xl text-xs hover:bg-red-700 transition shadow-md">সেটিংস সেভ করুন 💾</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // ফায়ারবেস ইনিশিয়ালাইজেশন
+    const firebaseConfig = {
+      apiKey: "AIzaSyBjG8tWlM9-TVXPPCL7C6Q28933vaKlmlA",
+      authDomain: "daliyjobs-f523c.firebaseapp.com",
+      databaseURL: "https://daliyjobs-f523c-default-rtdb.firebaseio.com",
+      projectId: "daliyjobs-f523c",
+      storageBucket: "daliyjobs-f523c.firebasestorage.app",
+      messagingSenderId: "620988274849",
+      appId: "1:620988274849:web:dc25f918be8356cf45f8e0",
+      measurementId: "G-K1TN5Z3CX3"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let appSettings = {};
+    let allUsersData = [];
+
+    function loadSettingsAndInitialize() {
+      database.ref('settings').on('value', (snapshot) => {
+        appSettings = snapshot.val() || {
+          botToken: "",
+          botName: "TASKS CRAFT",
+          refBonus: 5,
+          minWithdraw: 100,
+          minReferrals: 0,
+          banner1: "https://placehold.co/600x300/1e3a8a/ffffff?text=TASKS+CRAFT",
+          banner2: "https://placehold.co/600x300/1e3a8a/ffffff?text=Work+and+Earn",
+          banner3: "https://placehold.co/600x300/1e3a8a/ffffff?text=Fast+Payment",
+          adReward: 0.5,
+          telegramGroup: "https://t.me/TasksCraftSupport",
+          popupBanner: "https://placehold.co/600x300/1e3a8a/ffffff?text=Welcome+Bonus",
+          popupText: "আমাদের অফিশিয়াল গ্রুপে জয়েন করুন সকল পেমেন্ট আপডেট পেতে!"
+        };
+        populateSettingsInputs();
+      });
+
+      listenAdminCounts();
+      switchAdminSubSection('users');
+    }
+
+    function switchAdminSubSection(secId) {
+      document.querySelectorAll('.adm-section').forEach(sec => sec.classList.add('hidden'));
+      document.getElementById('adm-sec-' + secId).classList.remove('hidden');
+
+      document.querySelectorAll('#admin-app-view button').forEach(btn => {
+        if(btn.id && btn.id.startsWith('adm-nav-')) {
+          btn.classList.remove('bg-red-600', 'text-white');
+          btn.classList.add('text-slate-500', 'hover:bg-slate-100');
+        }
+      });
+      const actBtn = document.getElementById('adm-nav-' + secId);
+      if(actBtn) {
+        actBtn.classList.add('bg-red-600', 'text-white');
+        actBtn.classList.remove('text-slate-500', 'hover:bg-slate-100');
+      }
+
+      if (secId === 'users') loadAdminUsers();
+      if (secId === 'withdraw') loadAdminWithdraws();
+      if (secId === 'submissions') loadAdminSubmissions();
+      if (secId === 'createjob') loadAdminJobs();
+    }
+
+    function listenAdminCounts() {
+      database.ref('users').on('value', snap => {
+        document.getElementById('adm-count-users').innerText = snap.numChildren();
+      });
+
+      database.ref('withdrawals').on('value', snap => {
+        let pending = 0;
+        snap.forEach(c => { if (c.val().status === 'pending') pending++; });
+        document.getElementById('adm-count-withdraws').innerText = pending;
+      });
+
+      database.ref('submissions').on('value', snap => {
+        let pending = 0;
+        snap.forEach(c => { if (c.val().status === 'pending') pending++; });
+        document.getElementById('adm-count-submissions').innerText = pending;
+      });
+    }
+
+    // ১. ইউজার লিস্ট মডিউল
+    function loadAdminUsers() {
+      database.ref('users').once('value', (snapshot) => {
+        allUsersData = [];
+        snapshot.forEach(child => { allUsersData.push(child.val()); });
+        renderAdminUserList(allUsersData);
+      });
+    }
+
+    function renderAdminUserList(users) {
+      const container = document.getElementById('adm-user-list-container');
+      container.innerHTML = '';
+
+      if (users.length === 0) {
+        container.innerHTML = '<p class="text-center text-xs text-slate-400 py-6">কোনো মেম্বার পাওয়া যায়নি।</p>';
+        return;
+      }
+
+      users.forEach(u => {
+        const card = document.createElement('div');
+        card.className = "premium-card p-4 space-y-3 border-l-4 " + (u.status === 'banned' ? 'border-l-red-600 bg-red-50/10' : 'border-l-blue-600');
+        card.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div class="flex items-center space-x-3">
+              <img src="https://img.icons8.com/color/96/user-male-circle--v1.png" class="w-10 h-10 rounded-full border border-slate-200">
+              <div>
+                <h4 class="text-xs font-extrabold text-slate-800">${u.name}</h4>
+                <p class="text-[9px] text-slate-400 font-mono">ChatID: ${u.id}</p>
+                <p class="text-[9px] text-slate-400 font-semibold">User: @${u.username || 'N/A'}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-xs bg-slate-100 text-slate-700 font-black px-2 py-1 rounded-lg">${parseFloat(u.balance).toFixed(2)} ৳</span>
+              <p class="text-[9px] text-slate-400 font-bold mt-1">${u.invitedCount || 0} রেফার</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2 pt-2 border-t border-slate-100 text-xs">
+            <button onclick="handleModifyBalance('${u.id}', 'add')" class="flex-1 bg-blue-50 text-blue-600 border border-blue-200 py-2 rounded-xl font-bold hover:bg-blue-100 transition">+ ব্যালেন্স</button>
+            <button onclick="handleModifyBalance('${u.id}', 'sub')" class="flex-1 bg-amber-50 text-amber-600 border border-amber-200 py-2 rounded-xl font-bold hover:bg-amber-100 transition">- ব্যালেন্স</button>
+            <button onclick="toggleUserBanStatus('${u.id}', '${u.status || 'active'}')" class="flex-1 font-bold py-2 rounded-xl transition border ${u.status === 'banned' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}">
+              ${u.status === 'banned' ? 'আনব্যান' : 'ব্যান করুন'}
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function filterAdminUserList() {
+      const q = document.getElementById('adm-user-search').value.toLowerCase().trim();
+      const filtered = allUsersData.filter(u => {
+        return u.name.toLowerCase().includes(q) || u.id.includes(q);
+      });
+      renderAdminUserList(filtered);
+    }
+
+    function handleModifyBalance(userId, type) {
+      const strVal = prompt("কত টাকা " + (type === 'add' ? 'যোগ' : 'বিয়োগ') + " করতে চান বলুন:");
+      const amt = parseFloat(strVal);
+      if(isNaN(amt) || amt <= 0) {
+        alert("সঠিক পজিটিভ সংখ্যা দিন!");
+        return;
+      }
+
+      const uRef = database.ref('users/' + userId);
+      uRef.once('value', snap => {
+        if(snap.exists()) {
+          const curBal = parseFloat(snap.val().balance || 0);
+          let nextBal = curBal;
+          if (type === 'add') nextBal += amt;
+          else nextBal = Math.max(0, curBal - amt);
+
+          uRef.update({ balance: nextBal }).then(() => {
+            alert("সফলভাবে ব্যালেন্স আপডেট করা হয়েছে!");
+            loadAdminUsers();
+            sendTelegramMessage(userId, `🔔 ব্যালেন্স আপডেট!\nএডমিন আপনার একাউন্ট ব্যালেন্স ${type === 'add' ? 'বৃদ্ধি' : 'হ্রাস'} করেছেন। নতুন ব্যালেন্স: ${nextBal.toFixed(2)} ৳`);
+          });
+        }
+      });
+    }
+
+    function toggleUserBanStatus(userId, currentStatus) {
+      const nextStatus = currentStatus === 'banned' ? 'active' : 'banned';
+      const conf = confirm(`আপনি কি নিশ্চিতভাবে ইউজারকে ${nextStatus === 'banned' ? 'ব্যান' : 'আনব্যান'} করতে চান?`);
+      if(!conf) return;
+
+      database.ref('users/' + userId).update({ status: nextStatus }).then(() => {
+        alert("ইউজার সফলভাবে " + (nextStatus === 'banned' ? 'ব্যান' : 'আনব্যান') + " হয়েছে!");
+        loadAdminUsers();
+      });
+    }
+
+    // ২. উইথড্র পেমেন্ট রিকোয়েস্ট ম্যানেজমেন্ট
+    function loadAdminWithdraws() {
+      database.ref('withdrawals').once('value', (snapshot) => {
+        const container = document.getElementById('adm-withdraw-list-container');
+        container.innerHTML = '';
+        let hasPending = false;
+
+        snapshot.forEach(child => {
+          const w = child.val();
+          if (w.status !== 'pending') return;
+          hasPending = true;
+
+          const card = document.createElement('div');
+          card.className = "premium-card p-4 space-y-3 border-l-4 border-l-red-500 bg-white";
+          card.innerHTML = `
+            <div class="flex justify-between items-start">
+              <div>
+                <h4 class="text-xs font-extrabold text-slate-800">${w.userName}</h4>
+                <p class="text-[9px] text-slate-400 font-mono">ChatID: ${w.userId}</p>
+                <p class="text-xs text-slate-700 font-bold mt-1">পদ্ধতি: <span class="text-blue-600">${w.method}</span></p>
+                <p class="text-xs text-slate-700 font-bold font-mono">মোবাইল: ${w.phone}</p>
+              </div>
+              <div class="text-right">
+                <span class="text-xs bg-red-50 text-red-600 font-black px-2.5 py-1.5 rounded-lg border border-red-100">${parseFloat(w.amount).toFixed(2)} ৳</span>
+                <p class="text-[9px] text-slate-400 mt-1">${new Date(w.timestamp).toLocaleString('bn-BD')}</p>
+              </div>
+            </div>
+            <div class="flex space-x-2 pt-2 border-t border-slate-50 text-xs">
+              <button onclick="handleResolveWithdraw('${w.id}', '${w.userId}', ${w.amount}, 'approved')" class="flex-1 bg-emerald-50 text-emerald-600 border border-emerald-200 py-2.5 rounded-xl font-bold hover:bg-emerald-100 transition">Approve (পেমেন্ট সম্পন্ন)</button>
+              <button onclick="handleResolveWithdraw('${w.id}', '${w.userId}', ${w.amount}, 'rejected')" class="flex-1 bg-red-50 text-red-600 border border-red-200 py-2.5 rounded-xl font-bold hover:bg-red-100 transition">Reject (রিজেক্ট ও ফেরত)</button>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+
+        if(!hasPending) {
+          container.innerHTML = '<p class="text-center text-xs text-slate-400 py-10">কোনো পেন্ডিং উইথড্র আবেদন নেই।</p>';
+        }
+      });
+    }
+
+    function handleResolveWithdraw(wdId, userId, amount, status) {
+      const conf = confirm(`উইথড্র আবেদনটি কি নিশ্চিতভাবে ${status === 'approved' ? 'অ্যাপ্রুভ' : 'রিজেক্ট'} করবেন?`);
+      if(!conf) return;
+
+      if (status === 'approved') {
+        database.ref('withdrawals/' + wdId).update({ status: 'approved' }).then(() => {
+          const uRef = database.ref('users/' + userId);
+          uRef.once('value', snap => {
+            if(snap.exists()){
+              const totalWd = parseFloat(snap.val().totalWithdraw || 0) + amount;
+              uRef.update({ totalWithdraw: totalWd });
+            }
+          });
+          alert("উইথড্র সফলভাবে অনুমোদিত হয়েছে!");
+          loadAdminWithdraws();
+          sendTelegramMessage(userId, `💸 উইথড্র সফল!\nআপনার ${amount.toFixed(2)} ৳ উইথড্র রিকোয়েস্টটি এডমিন এপ্রুভ ও পেইড করেছেন। ধন্যবাদ!`);
+        });
+      } else {
+        const uRef = database.ref('users/' + userId);
+        uRef.once('value', snap => {
+          if (snap.exists()) {
+            const currentBalance = parseFloat(snap.val().balance || 0);
+            const refundedBalance = currentBalance + amount;
+
+            uRef.update({ balance: refundedBalance }).then(() => {
+              database.ref('withdrawals/' + wdId).update({ status: 'rejected' }).then(() => {
+                alert("রিকোয়েস্ট রিজেক্ট করা হয়েছে এবং টাকা ফেরত দেওয়া হয়েছে!");
+                loadAdminWithdraws();
+                sendTelegramMessage(userId, `❌ উইথড্র বাতিল!\nআপনার ${amount.toFixed(2)} ৳ উইথড্র রিকোয়েস্টটি রিজেক্ট করা হয়েছে এবং টাকা আপনার মূল ওয়ালেটে ফেরত দেওয়া হয়েছে।`);
+              });
+            });
+          }
+        });
+      }
+    }
+
+    // ৩. কাজের প্রমাণপত্র যাচাইকরণ
+    function loadAdminSubmissions() {
+      database.ref('submissions').once('value', (snapshot) => {
+        const container = document.getElementById('adm-submissions-list-container');
+        container.innerHTML = '';
+        let hasPending = false;
+
+        snapshot.forEach(child => {
+          const sub = child.val();
+          if (sub.status !== 'pending') return;
+          hasPending = true;
+
+          const card = document.createElement('div');
+          card.className = "premium-card p-4 space-y-3.5 border-l-4 border-l-emerald-500 bg-white";
+          card.innerHTML = `
+            <div class="flex justify-between items-start">
+              <div>
+                <h4 class="text-xs font-extrabold text-slate-800">${sub.userName}</h4>
+                <p class="text-[9px] text-slate-400 font-mono">ChatID: ${sub.userId}</p>
+                <p class="text-xs font-bold text-slate-700 mt-1">জব টাইটেল: <span class="text-blue-600">${sub.jobTitle}</span></p>
+                <p class="text-xs font-bold text-slate-700">পুরস্কার: <span class="text-emerald-600">${parseFloat(sub.amount).toFixed(2)} ৳</span></p>
+              </div>
+              <div class="text-right">
+                <span class="text-[9px] text-slate-400 font-bold">${new Date(sub.timestamp).toLocaleString('bn-BD')}</span>
+              </div>
+            </div>
+            
+            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+              <p class="text-xs text-slate-600 font-semibold mb-1">মন্তব্য/ইউজারনেম:</p>
+              <p class="text-xs text-slate-800 italic">${sub.comment || 'কোনো মন্তব্য নেই।'}</p>
+            </div>
+
+            <div class="space-y-1">
+              <p class="text-[11px] font-bold text-slate-400">স্ক্রিনশট প্রমাণপত্র:</p>
+              <a href="${sub.proofImg}" target="_blank" class="block rounded-xl overflow-hidden border border-slate-200">
+                <img src="${sub.proofImg}" class="w-full h-32 object-cover hover:opacity-90 transition" alt="Proof">
+              </a>
+            </div>
+
+            <div class="flex space-x-2 pt-2 border-t border-slate-50 text-xs">
+              <button onclick="handleResolveSubmission('${sub.id}', '${sub.userId}', ${sub.amount}, '${encodeURIComponent(sub.jobTitle)}', 'approved')" class="flex-1 bg-emerald-50 text-emerald-600 border border-emerald-200 py-2.5 rounded-xl font-bold hover:bg-emerald-100 transition">Approve (টাকা যোগ হবে)</button>
+              <button onclick="handleResolveSubmission('${sub.id}', '${sub.userId}', ${sub.amount}, '${encodeURIComponent(sub.jobTitle)}', 'rejected')" class="flex-1 bg-red-50 text-red-600 border border-red-200 py-2.5 rounded-xl font-bold hover:bg-red-100 transition">Reject (বাতিল করুন)</button>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+
+        if (!hasPending) {
+          container.innerHTML = '<p class="text-center text-xs text-slate-400 py-10">কোনো পেন্ডিং সাবমিশন নেই।</p>';
+        }
+      });
+    }
+
+    function handleResolveSubmission(subId, userId, amount, encodedTitle, status) {
+      const jobTitle = decodeURIComponent(encodedTitle);
+      const conf = confirm(`কাজটি কি নিশ্চিতভাবে ${status === 'approved' ? 'অনুমোদন' : 'বাতিল'} করবেন?`);
+      if(!conf) return;
+
+      if (status === 'approved') {
+        const uRef = database.ref('users/' + userId);
+        uRef.once('value', snap => {
+          if (snap.exists()) {
+            const currentBalance = parseFloat(snap.val().balance || 0);
+            const updatedBalance = currentBalance + amount;
+
+            uRef.update({ balance: updatedBalance }).then(() => {
+              database.ref('submissions/' + subId).update({ status: 'approved' }).then(() => {
+                alert("কাজটি সফলভাবে অনুমোদিত হয়েছে এবং ব্যালেন্স যোগ হয়েছে!");
+                loadAdminSubmissions();
+                sendTelegramMessage(userId, `✅ কাজ অনুমোদিত!\nআপনার "${jobTitle}" কাজটি অনুমোদিত হয়েছে। আপনার একাউন্টে +${amount.toFixed(2)} ৳ যোগ করা হয়েছে।`);
+              });
+            });
+          }
+        });
+      } else {
+        database.ref('submissions/' + subId).update({ status: 'rejected' }).then(() => {
+          alert("কাজটি বাতিল করা হয়েছে!");
+          loadAdminSubmissions();
+          sendTelegramMessage(userId, `❌ কাজ বাতিল!\nআপনার "${jobTitle}" কাজটি এডমিন প্যানেল কর্তৃক বাতিল করা হয়েছে। দয়া করে সঠিক প্রুফ দিয়ে আবার কাজটি করুন।`);
+        });
+      }
+    }
+
+    // ৪. জব তৈরি, এডিট ও ডিলিট মডিউল
+    function loadAdminJobs() {
+      database.ref('jobs').on('value', (snapshot) => {
+        const container = document.getElementById('adm-current-jobs-list');
+        container.innerHTML = '';
+        let count = 0;
+
+        snapshot.forEach(child => {
+          const job = child.val();
+          count++;
+
+          const card = document.createElement('div');
+          card.className = "premium-card p-4 space-y-2 bg-white";
+          card.innerHTML = `
+            <div class="flex justify-between items-start">
+              <div>
+                <h4 class="text-xs font-extrabold text-slate-800">${job.title}</h4>
+                <p class="text-[10px] text-emerald-600 font-extrabold">পুরস্কার: ${parseFloat(job.amount).toFixed(2)} ৳</p>
+                <p class="text-[10px] text-slate-500 mt-1 line-clamp-1">${job.details || ''}</p>
+              </div>
+            </div>
+            <div class="flex space-x-2 pt-2 border-t border-slate-100 text-xs font-bold">
+              <button onclick="handleEditJobSetup('${child.key}', '${encodeURIComponent(job.title)}', '${encodeURIComponent(job.details)}', '${job.link}', '${job.banner || ''}', '${job.amount}')" class="flex-1 bg-slate-100 text-slate-700 py-2 rounded-xl hover:bg-slate-200 transition">এডিট করুন</button>
+              <button onclick="handleDeleteJob('${child.key}')" class="flex-1 bg-red-50 text-red-600 border border-red-200 py-2 rounded-xl hover:bg-red-100 transition">ডিলিট করুন</button>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+
+        if (count === 0) {
+          container.innerHTML = '<p class="text-center text-xs text-slate-400 py-6">কোনো কাজ তৈরি করা নেই।</p>';
+        }
+      });
+    }
+
+    function handleSaveJob() {
+      const id = document.getElementById('adm-job-edit-id').value;
+      const title = document.getElementById('adm-job-title').value.trim();
+      const details = document.getElementById('adm-job-details').value.trim();
+      const link = document.getElementById('adm-job-link').value.trim();
+      const banner = document.getElementById('adm-job-banner').value.trim();
+      const amount = parseFloat(document.getElementById('adm-job-amount').value || 0);
+
+      if (!title || !details || isNaN(amount) || amount <= 0) {
+        alert("কাজের নাম, বিবরণ এবং সঠিক পুরস্কারের পরিমাণ আবশ্যক!");
+        return;
+      }
+
+      const jobData = {
+        title: title,
+        details: details,
+        link: link || "",
+        banner: banner || "",
+        amount: amount
+      };
+
+      if (id) {
+        database.ref('jobs/' + id).update(jobData).then(() => {
+          alert("কাজটি সফলভাবে আপডেট করা হয়েছে!");
+          resetJobForm();
+        });
+      } else {
+        const newKey = database.ref('jobs').push().key;
+        database.ref('jobs/' + newKey).set(jobData).then(() => {
+          alert("নতুন কাজটি তৈরি করা হয়েছে!");
+          resetJobForm();
+        });
+      }
+    }
+
+    function handleEditJobSetup(id, title, details, link, banner, amount) {
+      document.getElementById('adm-job-edit-id').value = id;
+      document.getElementById('adm-job-title').value = decodeURIComponent(title);
+      document.getElementById('adm-job-details').value = decodeURIComponent(details);
+      document.getElementById('adm-job-link').value = (link && link !== 'undefined') ? link : '';
+      document.getElementById('adm-job-banner').value = (banner && banner !== 'undefined') ? banner : '';
+      document.getElementById('adm-job-amount').value = amount;
+
+      document.getElementById('adm-job-form-title').innerText = "✏️ কাজ এডিট করুন";
+      document.getElementById('adm-job-cancel-btn').classList.remove('hidden');
+    }
+
+    function resetJobForm() {
+      document.getElementById('adm-job-edit-id').value = '';
+      document.getElementById('adm-job-title').value = '';
+      document.getElementById('adm-job-details').value = '';
+      document.getElementById('adm-job-link').value = '';
+      document.getElementById('adm-job-banner').value = '';
+      document.getElementById('adm-job-amount').value = '';
+
+      document.getElementById('adm-job-form-title').innerText = "🆕 নতুন কাজ তৈরি করুন";
+      document.getElementById('adm-job-cancel-btn').classList.add('hidden');
+    }
+
+    function handleDeleteJob(jobId) {
+      const conf = confirm("আপনি কি নিশ্চিতভাবে এই কাজটি চিরতরে ডিলিট করতে চান?");
+      if (conf) {
+        database.ref('jobs/' + jobId).remove().then(() => {
+          alert("কাজটি সফলভাবে ডিলিট হয়েছে!");
+        });
+      }
+    }
+
+    // ৫. অ্যাপ সেটিংস ড্যাশবোর্ড পপুলেট ও সেভ
+    function populateSettingsInputs() {
+      document.getElementById('adm-set-ref').value = appSettings.refBonus || 0;
+      document.getElementById('adm-set-minwd').value = appSettings.minWithdraw || 0;
+      document.getElementById('adm-set-minref').value = appSettings.minReferrals || 0;
+      document.getElementById('adm-set-adreward').value = appSettings.adReward || 0;
+      document.getElementById('adm-set-telegramgroup').value = appSettings.telegramGroup || '';
+      document.getElementById('adm-set-popupbanner').value = appSettings.popupBanner || '';
+      document.getElementById('adm-set-popuptext').value = appSettings.popupText || '';
+      document.getElementById('adm-set-bottoken').value = appSettings.botToken || '';
+      document.getElementById('adm-set-b1').value = appSettings.banner1 || '';
+      document.getElementById('adm-set-b2').value = appSettings.banner2 || '';
+      document.getElementById('adm-set-b3').value = appSettings.banner3 || '';
+    }
+
+    function handleSaveSettings() {
+      const refBonus = parseFloat(document.getElementById('adm-set-ref').value || 0);
+      const minWithdraw = parseFloat(document.getElementById('adm-set-minwd').value || 0);
+      const minReferrals = parseInt(document.getElementById('adm-set-minref').value || 0);
+      const adReward = parseFloat(document.getElementById('adm-set-adreward').value || 0);
+      const telegramGroup = document.getElementById('adm-set-telegramgroup').value.trim();
+      const popupBanner = document.getElementById('adm-set-popupbanner').value.trim();
+      const popupText = document.getElementById('adm-set-popuptext').value.trim();
+      const botToken = document.getElementById('adm-set-bottoken').value.trim();
+      const banner1 = document.getElementById('adm-set-b1').value.trim();
+      const banner2 = document.getElementById('adm-set-b2').value.trim();
+      const banner3 = document.getElementById('adm-set-b3').value.trim();
+
+      const updatedData = {
+        refBonus: refBonus,
+        minWithdraw: minWithdraw,
+        minReferrals: minReferrals,
+        adReward: adReward,
+        telegramGroup: telegramGroup,
+        popupBanner: popupBanner,
+        popupText: popupText,
+        botToken: botToken,
+        banner1: banner1,
+        banner2: banner2,
+        banner3: banner3,
+        botName: appSettings.botName || "TASKS CRAFT"
+      };
+
+      database.ref('settings').update(updatedData).then(() => {
+        alert("গ্লোবাল সেটিংস এবং রিওয়ার্ড পলিসি সফলভাবে সেভ করা হয়েছে!");
+      });
+    }
+
+    function sendTelegramMessage(chatId, text) {
+      if (!appSettings.botToken) return;
+      const url = `https://api.telegram.org/bot${appSettings.botToken}/sendMessage`;
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: "HTML" })
+      }).catch(err => console.error("টেলিগ্রাম মেসেজ পাঠানো ব্যর্থ হয়েছে: ", err));
+    }
+
+    loadSettingsAndInitialize();
+  </script>
+</body>
+</html>
